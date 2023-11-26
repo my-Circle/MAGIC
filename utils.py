@@ -117,7 +117,7 @@ def edit_distance_loss(s1, s2):
     """
     if len(s1) > len(s2):
         s1, s2 = s2, s1
-    if len(s2) == 0:  # 空串跳出
+    if len(s2) == 0:
         return 0
     distances = range(len(s1) + 1)
     for i, c2 in enumerate(s2):
@@ -193,7 +193,7 @@ class AttnLabelConverter(object):
             text.append('[s]')
             text = [self.dict[char] for char in text]
             batch_text[i][1:1 + len(text)] = torch.LongTensor(text)  # batch_text[:, 0] = [GO] token
-        return (batch_text.to(device), torch.IntTensor(length).to(device))  #batch_text 192*27 27：max_len+开始符GO+结束符S  length:长为192的列表，每个元素记录了batch中每个单词的长度+1，这个+1是结束符S
+        return (batch_text.to(device), torch.IntTensor(length).to(device))
 
     def decode(self, text_index, length):
         """ convert text-index into text-label. """
@@ -201,7 +201,7 @@ class AttnLabelConverter(object):
         for index, l in enumerate(length):
             text = ''.join([self.character[i] for i in text_index[index, :]])
             texts.append(text)
-        return texts #192的列表，每个元素是这个batch中每个图片的预测输出
+        return texts
 
 
 class Averager(object):
@@ -301,36 +301,7 @@ class TokenLabelConverter(object):
             txt = [self.dict[char] for char in txt]
             batch_text[i][:len(txt)] = torch.LongTensor(txt)  # batch_text[:, 0] = [GO] token
         return batch_text.to(device)
-    # def encode(self, text, batch_max_length=25):
-    #     """ convert text-label into text-index.
-    #     input:
-    #         text: text labels of each image. [batch_size]
-    #         batch_max_length: max length of text label in the batch. 25 by default
-    #
-    #     output:
-    #         text : the input of attention decoder. [batch_size x (max_length+2)] +1 for [GO] token and +1 for [s] token.
-    #             text[:, 0] is [GO] token and text is padded with [GO] token after [s] token.
-    #         length : the length of output of attention decoder, which count [s] token also. [3, 7, ....] [batch_size]
-    #     """
-    #     length = [len(s) + 1 for s in text]  # +1 for [s] at end of sentence.
-    #     # batch_max_length = max(length) # this is not allowed for multi-gpu setting
-    #     batch_max_length += 1
-    #     # additional +1 for [GO] at first step. batch_text is padded with [GO] token after [s] token.
-    #     batch_text = torch.LongTensor(len(text), batch_max_length + 1).fill_(0)
-    #     for i, t in enumerate(text):
-    #         text = list(t)
-    #         text.append('[s]')
-    #         text = [self.dict[char] for char in text]
-    #         batch_text[i][1:1 + len(text)] = torch.LongTensor(text)  # batch_text[:, 0] = [GO] token
-    #     return (batch_text.to(device), torch.IntTensor(length).to(device))  #batch_text 192*27 27：max_len+开始符GO+结束符S  length:长为192的列表，每个元素记录了batch中每个单词的长度+1，这个+1是结束符S
 
-    # def decode(self, text_index, length):
-    #     """ convert text-index into text-label. """
-    #     texts = []
-    #     for index, l in enumerate(length):
-    #         text = ''.join([self.character[i] for i in text_index[index, :]])
-    #         texts.append(text)
-    #     return texts #192的列表，每个元素是这个batch中每个图片的预测输出
 
     def char_encode(self, text):
         """ convert text-label into text-index.

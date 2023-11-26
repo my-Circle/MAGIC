@@ -35,8 +35,8 @@ class Model(nn.Module):
             print("USE MGP-STR")
             self.mgp_str= create_mgp_str(batch_max_length=opt.batch_max_length+2, num_tokens=opt.num_class, model=opt.TransformerModel)
 
-    def forward(self, input, is_eval=False): #input(192,3,32,128)
-        prediction = self.mgp_str(input, is_eval=is_eval) #进入MGPSTR.forward
-        return prediction #prediction:attns是个长度为3的列表，里面每个元素都是(192,27,257)维的注意力权重张量；char_out(192,27,38);bpe_out(192,27,50257);wp_out(192,27,30522)
+    def forward(self, input, is_eval=False):
+        prediction = self.mgp_str(input, is_eval=is_eval)
+        return prediction
 
 
