@@ -12,11 +12,9 @@ import torch.optim as optim
 import torch.utils.data
 
 from dataset import hierarchical_dataset, AlignCollate, Batch_Balanced_Dataset
-# from Datasets import hierarchical_dataset, AlignCollate, Batch_Balanced_Dataset
 # import copy
 from modules.domain_adapt import d_cls_inst
 from modules.radam import AdamW, RAdam
-# from seqda_model import Model
 from test import validation
 from utils import AttnLabelConverter, Averager, load_char_dict, TokenLabelConverter
 from losses.CCLoss import CCLoss
@@ -62,7 +60,7 @@ class trainer(object):
             opt.character = string.printable[:-6]  # same with ASTER setting (use 94 char).
 
         if opt.char_dict is not None:
-            opt.character = load_char_dict(opt.char_dict)[3:-2]  # 去除Attention 和 CTC引入的一些特殊符号
+            opt.character = load_char_dict(opt.char_dict)[3:-2]
 
         """ model configuration """
 
@@ -171,8 +169,8 @@ class trainer(object):
         """ Define Model """
         self.model = Model(opt)
         # Initialize domain classifiers here.
-        self.global_discriminator = d_cls_inst(fc_size=49344)  #fc_size得改 待调试 13312
-        self.local_discriminator = d_cls_inst(fc_size=192)  #同上 256
+        self.global_discriminator = d_cls_inst(fc_size=49344)
+        self.local_discriminator = d_cls_inst(fc_size=192)
 
         self.weight_initializer()
         self.model = torch.nn.DataParallel(self.model).to(device)
@@ -268,7 +266,7 @@ class trainer(object):
 
             # Attention # align with Attention.forward
             src_char_preds, src_bpe_preds,src_wp_preds,src_global_feature, src_local_feature, _, _ = self.model(src_image)
-                                                                          # char_src_text[:, :-1],bpe_src_text[:,:-1],wp_src_text[:,:-1])
+
             # src_global_feature = self.model.visual_feature
             # src_local_feature = self.model.Prediction.context_history
             # char_target = char_src_text[:, 1:]  # without [GO] Symbol
@@ -293,8 +291,7 @@ class trainer(object):
             src_local_feature = src_local_feature.contiguous().view(-1, src_local_feature.shape[-1])  #bs*27,768
 
             tar_preds, _, _, tar_global_feature, tar_local_feature, _, _ = self.model(tar_image)
-                                                                          # char_tar_text[:, :-1],bpe_tar_text[:,:-1],wp_tar_text[:,:-1],
-                                                                          # is_train=False)
+
 
             # tar_global_feature = self.model.visual_feature
             # tar_local_feature = self.model.Prediction.context_history
@@ -426,9 +423,9 @@ class trainer(object):
         params = torch.load(saved_model)
 
         if 'model' not in params:
-            self.model.load_state_dict(params)#,strict=False
+            self.model.load_state_dict(params)
         else:
-            self.model.load_state_dict(params['model'])#,strict=False
+            self.model.load_state_dict(params['model'])
         if 'global_discriminator' in params:
             self.global_discriminator.load_state_dict(params['global_discriminator'])
         if 'local_discriminator' in params:

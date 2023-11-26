@@ -12,11 +12,9 @@ import torch.optim as optim
 import torch.utils.data
 
 from dataset import hierarchical_dataset, AlignCollate, Batch_Balanced_Dataset
-# from Datasets import hierarchical_dataset, AlignCollate, Batch_Balanced_Dataset
 # import copy
 from modules.domain_adapt import d_cls_inst
 from modules.radam import AdamW, RAdam
-# from seqda_model import Model
 from test import validation
 from utils import AttnLabelConverter, Averager, load_char_dict, TokenLabelConverter
 from losses.CCLoss import CCLoss
@@ -62,7 +60,7 @@ class trainer(object):
             opt.character = string.printable[:-6]  # same with ASTER setting (use 94 char).
 
         if opt.char_dict is not None:
-            opt.character = load_char_dict(opt.char_dict)[3:-2]  # 去除Attention 和 CTC引入的一些特殊符号
+            opt.character = load_char_dict(opt.char_dict)[3:-2]
 
         """ model configuration """
 
@@ -179,8 +177,8 @@ class trainer(object):
         """ Define Model """
         self.model = Model(opt)
         # Initialize domain classifiers here.
-        # self.global_discriminator = d_cls_inst(fc_size=49344)  #fc_size得改 待调试 13312 tiny：49344 base:197376
-        # self.local_discriminator = d_cls_inst(fc_size=192)  #同上 256 tiny：192 base:768
+        # self.global_discriminator = d_cls_inst(fc_size=49344)
+        # self.local_discriminator = d_cls_inst(fc_size=192)
         #
         # self.local_discriminator_bpe = d_cls_inst(fc_size=192)
         # self.local_discriminator_wp = d_cls_inst(fc_size=192)
@@ -287,7 +285,7 @@ class trainer(object):
 
             # Attention # align with Attention.forward
             src_char_preds, src_bpe_preds,src_wp_preds,src_global_feature, src_local_feature, src_local_feature_bpe, src_local_feature_wp = self.model(src_image)
-                                                                                            # char_src_text[:, :-1],bpe_src_text[:,:-1],wp_src_text[:,:-1])
+
             # src_global_feature = self.model.visual_feature
             # src_local_feature = self.model.Prediction.context_history
             # char_target = char_src_text[:, 1:]  # without [GO] Symbol
@@ -314,8 +312,7 @@ class trainer(object):
             src_local_feature_wp = src_local_feature_wp.contiguous().view(-1, src_local_feature_wp.shape[-1])
 
             # tar_char_preds, tar_bpe_preds, tar_wp_preds, tar_global_feature, tar_local_feature, tar_local_feature_bpe, tar_local_feature_wp = self.model(tar_image)
-                                                                          # char_tar_text[:, :-1],bpe_tar_text[:,:-1],wp_tar_text[:,:-1],
-                                                                          # is_train=False)
+
             # tar_global_feature = self.model.visual_feature
             # tar_local_feature = self.model.Prediction.context_history
             # tar_global_feature = tar_global_feature.contiguous().view(tar_global_feature.shape[0], -1)
@@ -387,7 +384,7 @@ class trainer(object):
             # d_inst_loss_wp = src_d_inst_loss_wp + tar_d_inst_loss_wp
 
             # Add domain loss
-            loss = src_char_cls_loss.mean() + src_bpe_cls_loss.mean() + src_wp_cls_loss.mean() #+ (tar_char_em_loss.mean() + tar_bpe_em_loss.mean() + tar_wp_em_loss.mean()) * tar_lambda + omega * (d_img_loss.mean() + d_inst_loss.mean() + d_inst_loss_bpe.mean() + d_inst_loss_wp.mean()) #0.8*tar_char_em_loss.mean() + 0.1*tar_bpe_em_loss.mean() + 0.1*tar_wp_em_loss.mean()
+            loss = src_char_cls_loss.mean() + src_bpe_cls_loss.mean() + src_wp_cls_loss.mean()
             loss_avg.add(loss)
             cls_loss_avg.add(src_char_cls_loss + src_bpe_cls_loss + src_wp_cls_loss)
             # sim_loss_avg.add(d_img_loss + d_inst_loss + d_inst_loss_bpe + d_inst_loss_wp)
