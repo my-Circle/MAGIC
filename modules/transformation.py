@@ -26,11 +26,11 @@ class TPS_SpatialTransformerNetwork(nn.Module):
         self.LocalizationNetwork = LocalizationNetwork(self.F, self.I_channel_num)
         self.GridGenerator = GridGenerator(self.F, self.I_r_size)
 
-    def forward(self, batch_I):  #192,1,32,100
-        batch_C_prime = self.LocalizationNetwork(batch_I)  # batch_size x K x 2  192,20,2
-        build_P_prime = self.GridGenerator.build_P_prime(batch_C_prime)  # batch_size x n (= I_r_width x I_r_height) x 2  192,3200,2
-        build_P_prime_reshape = build_P_prime.reshape([build_P_prime.size(0), self.I_r_size[0], self.I_r_size[1], 2])  #192,32,100,2
-        batch_I_r = F.grid_sample(batch_I, build_P_prime_reshape, padding_mode='border') #192,1,32,100
+    def forward(self, batch_I):
+        batch_C_prime = self.LocalizationNetwork(batch_I)  # batch_size x K x 2
+        build_P_prime = self.GridGenerator.build_P_prime(batch_C_prime)  # batch_size x n (= I_r_width x I_r_height) x 2
+        build_P_prime_reshape = build_P_prime.reshape([build_P_prime.size(0), self.I_r_size[0], self.I_r_size[1], 2])
+        batch_I_r = F.grid_sample(batch_I, build_P_prime_reshape, padding_mode='border')
 
         return batch_I_r,batch_C_prime
 
@@ -68,14 +68,14 @@ class LocalizationNetwork(nn.Module):
         initial_bias = np.concatenate([ctrl_pts_top, ctrl_pts_bottom], axis=0)
         self.localization_fc2.bias.data = torch.from_numpy(initial_bias).float().view(-1)
 
-    def forward(self, batch_I): #192,1,32,100
+    def forward(self, batch_I):
         """
         input:     batch_I : Batch Input Image [batch_size x I_channel_num x I_height x I_width]
         output:    batch_C_prime : Predicted coordinates of fiducial points for input batch [batch_size x F x 2]
         """
         batch_size = batch_I.size(0)
-        features = self.conv(batch_I).view(batch_size, -1) #192,512
-        batch_C_prime = self.localization_fc2(self.localization_fc1(features)).view(batch_size, self.F, 2) #192,20,2
+        features = self.conv(batch_I).view(batch_size, -1)
+        batch_C_prime = self.localization_fc2(self.localization_fc1(features)).view(batch_size, self.F, 2)
         return batch_C_prime
 
 
@@ -109,10 +109,10 @@ class GridGenerator(nn.Module):
         hat_C = np.zeros((F, F), dtype=float)  # F x F
         for i in range(0, F):
             for j in range(i, F):
-                r = np.linalg.norm(C[i] - C[j]) #求2范数
+                r = np.linalg.norm(C[i] - C[j])
                 hat_C[i, j] = r
                 hat_C[j, i] = r
-        np.fill_diagonal(hat_C, 1) #用1填充hat_C的主对角线
+        np.fill_diagonal(hat_C, 1)
         hat_C = (hat_C ** 2) * np.log(hat_C)
         # print(C.shape, hat_C.shape)
         delta_C = np.concatenate(  # F+3 x F+3
@@ -123,7 +123,7 @@ class GridGenerator(nn.Module):
             ],
             axis=0
         )
-        inv_delta_C = np.linalg.inv(delta_C) #计算矩阵的逆
+        inv_delta_C = np.linalg.inv(delta_C)
         return inv_delta_C  # F+3 x F+3
 
     def _build_P(self, I_r_width, I_r_height):
@@ -145,13 +145,13 @@ class GridGenerator(nn.Module):
         P_hat = np.concatenate([np.ones((n, 1)), P, rbf], axis=1)
         return P_hat  # n x F+3
 
-    def build_P_prime(self, batch_C_prime): #192,20,2
+    def build_P_prime(self, batch_C_prime):
         """ Generate Grid from batch_C_prime [batch_size x F x 2] """
         batch_size = batch_C_prime.size(0)
-        batch_inv_delta_C = self.inv_delta_C.repeat(batch_size, 1, 1) #192,23,23
-        batch_P_hat = self.P_hat.repeat(batch_size, 1, 1)  #192,3200,23
+        batch_inv_delta_C = self.inv_delta_C.repeat(batch_size, 1, 1)
+        batch_P_hat = self.P_hat.repeat(batch_size, 1, 1)
         batch_C_prime_with_zeros = torch.cat((batch_C_prime, torch.zeros(
-            batch_size, 3, 2).float().to(device)), dim=1)  # batch_size x F+3 x 2 192,23,2
-        batch_T = torch.bmm(batch_inv_delta_C, batch_C_prime_with_zeros)  # batch_size x F+3 x 2 192,23,2
-        batch_P_prime = torch.bmm(batch_P_hat, batch_T)  # batch_size x n x 2 192,3200,2
+            batch_size, 3, 2).float().to(device)), dim=1)  # batch_size x F+3 x 2
+        batch_T = torch.bmm(batch_inv_delta_C, batch_C_prime_with_zeros)  # batch_size x F+3 x 2
+        batch_P_prime = torch.bmm(batch_P_hat, batch_T)  # batch_size x n x 2
         return batch_P_prime  # batch_size x n x 2
