@@ -35,10 +35,10 @@ def create_mgp_str(batch_max_length, num_tokens, model=None, checkpoint_path='')
         pretrained=True,
         num_classes=num_tokens,
         checkpoint_path=checkpoint_path,
-        batch_max_length=batch_max_length)  #进入mgp_str-base/small/tiny_patch4_3_32_128方法
+        batch_max_length=batch_max_length)
 
     # might need to run to get zero init head for transfer learning
-    mgp_str.reset_classifier(num_classes=num_tokens) #进入MGPSTR类的reset_classifier方法
+    mgp_str.reset_classifier(num_classes=num_tokens)
 
     return mgp_str
 
@@ -47,11 +47,11 @@ class MGPSTR(VisionTransformer):
     def __init__(self, batch_max_length, *args, **kwargs):
         super().__init__(*args, **kwargs)
         
-        self.batch_max_length = batch_max_length  #27
-        self.char_tokenLearner = TokenLearner(self.embed_dim, self.batch_max_length)  #768,27 进入token_learner.py的init方法
+        self.batch_max_length = batch_max_length
+        self.char_tokenLearner = TokenLearner(self.embed_dim, self.batch_max_length)
 
-        self.bpe_tokenLearner = TokenLearner(self.embed_dim, self.batch_max_length)  #768,27
-        self.wp_tokenLearner = TokenLearner(self.embed_dim, self.batch_max_length)   #768,27
+        self.bpe_tokenLearner = TokenLearner(self.embed_dim, self.batch_max_length)
+        self.wp_tokenLearner = TokenLearner(self.embed_dim, self.batch_max_length)
 
     def reset_classifier(self, num_classes):
         self.num_classes = num_classes
@@ -60,39 +60,39 @@ class MGPSTR(VisionTransformer):
         self.wp_head = nn.Linear(self.embed_dim, 30522) if num_classes > 0 else nn.Identity()
         
 
-    def forward_features(self, x):  #重点逻辑 192,3,32,128
+    def forward_features(self, x):
         B = x.shape[0]
-        x = self.patch_embed(x)  #192,3*4*4,8,32->192,48,8*32->192,256,48->192,256,768
+        x = self.patch_embed(x)
 
-        cls_tokens = self.cls_token.expand(B, -1, -1)  # stole cls_tokens impl from Phil Wang, thanks  #cls_token(192,1,768)分类token
-        x = torch.cat((cls_tokens, x), dim=1) #加上分类token 192,257,768
-        x = x + self.pos_embed  #加上位置编码 pos_embed1,257,768,这里用来个广播机制
+        cls_tokens = self.cls_token.expand(B, -1, -1)  # stole cls_tokens impl from Phil Wang, thanks
+        x = torch.cat((cls_tokens, x), dim=1)
+        x = x + self.pos_embed
         x = self.pos_drop(x)
 
         for i,blk in enumerate(self.blocks):
-            x = blk(x)  #attn中的qkv先用了个线性层768->768*3=2304然后拆成了q、k、v进行自注意力机制 x还是(192,257,768)
+            x = blk(x)
 
-        #相对于mgp-str新的部分
-        visual_feature = x #(192,257,768)
+
+        visual_feature = x
             
         attens = []
 
         # char
-        char_attn, x_char = self.char_tokenLearner(x) #char_attn:(192,27,257) x_char:(192,27,768)
-        # 相对于mgp-str新的部分
+        char_attn, x_char = self.char_tokenLearner(x)
+
         global_feature = x_char
         x_char = self.char_head(x_char) #192,27,38
         char_out = x_char
         attens = [char_attn] 
 
         # bpe
-        bpe_attn, x_bpe = self.bpe_tokenLearner(x)  #bpe_attn:(192,27,257) x_bpe:(192,27,768)
+        bpe_attn, x_bpe = self.bpe_tokenLearner(x)
         global_feature_bpe = x_bpe
         bpe_out = self.bpe_head(x_bpe) #192,27,50257
         attens += [bpe_attn]
 
         # wp
-        wp_attn, x_wp = self.wp_tokenLearner(x)  #同上
+        wp_attn, x_wp = self.wp_tokenLearner(x)
         global_feature_wp = x_wp
         wp_out = self.wp_head(x_wp)  #192,27,30522
         attens += [wp_attn]
@@ -100,13 +100,13 @@ class MGPSTR(VisionTransformer):
         return attens, char_out, bpe_out, wp_out, visual_feature, global_feature, global_feature_bpe, global_feature_wp
 
     def forward(self, x, is_eval=False):  #192,3,32,128
-        attn_scores, char_out, bpe_out, wp_out, visual_f, global_f, global_f_bpe, global_f_wp = self.forward_features(x) #进入forward_features方法
+        attn_scores, char_out, bpe_out, wp_out, visual_f, global_f, global_f_bpe, global_f_wp = self.forward_features(x)
         if is_eval:
             return [attn_scores, char_out, bpe_out, wp_out]
         else:
             return [char_out, bpe_out, wp_out, visual_f, global_f, global_f_bpe, global_f_wp]
 
-def load_pretrained(model, cfg=None, num_classes=1000, in_chans=1, filter_fn=None, strict=True):  #加载预训练模型
+def load_pretrained(model, cfg=None, num_classes=1000, in_chans=1, filter_fn=None, strict=True):
     '''
     Loads a pretrained checkpoint
     From an older version of timm
@@ -122,7 +122,7 @@ def load_pretrained(model, cfg=None, num_classes=1000, in_chans=1, filter_fn=Non
         state_dict = state_dict["model"]
 
     if filter_fn is not None:
-        state_dict = filter_fn(state_dict)  #进入_conv_filter函数
+        state_dict = filter_fn(state_dict)
 
     print("in_chans",in_chans)
     if in_chans == 1:
@@ -156,7 +156,7 @@ def load_pretrained(model, cfg=None, num_classes=1000, in_chans=1, filter_fn=Non
         state_dict[classifier_name + '.weight'] = classifier_weight[1:]
         classifier_bias = state_dict[classifier_name + '.bias']
         state_dict[classifier_name + '.bias'] = classifier_bias[1:]
-    elif num_classes != cfg['num_classes']:   #删除分类头
+    elif num_classes != cfg['num_classes']:
         # completely discard fully connected for all other differences between pretrained and created model
         del state_dict[classifier_name + '.weight']
         del state_dict[classifier_name + '.bias']
@@ -165,7 +165,7 @@ def load_pretrained(model, cfg=None, num_classes=1000, in_chans=1, filter_fn=Non
     print("Loading pre-trained vision transformer weights from %s ..." % cfg['url'])
     model.load_state_dict(state_dict, strict=strict)
 
-def _conv_filter(state_dict):  #加载预训练模型权重时除去投影层
+def _conv_filter(state_dict):
     """ convert patch embedding weight from manual patchify + linear proj to conv"""
     out_dict = {}
     for k, v in state_dict.items():
@@ -180,14 +180,14 @@ def _conv_filter(state_dict):  #加载预训练模型权重时除去投影层
 def mgp_str_base_patch4_3_32_128(pretrained=False, **kwargs):
     kwargs['in_chans'] = 3
     model = MGPSTR(
-        img_size=(32,128), patch_size=4, embed_dim=768, depth=12, num_heads=12, mlp_ratio=4, qkv_bias=True, **kwargs)  #进入MGPSTR类init方法
+        img_size=(32,128), patch_size=4, embed_dim=768, depth=12, num_heads=12, mlp_ratio=4, qkv_bias=True, **kwargs)
     model.default_cfg = _cfg(
             #url='https://github.com/roatienza/public/releases/download/v0.1-deit-base/deit_base_patch16_224-b5f2ef4d.pth'
             url='https://dl.fbaipublicfiles.com/deit/deit_base_patch16_224-b5f2ef4d.pth'
     )
     if pretrained:
         load_pretrained(
-            model, num_classes=model.num_classes, in_chans=kwargs.get('in_chans', 3), filter_fn=_conv_filter) #进入load_pretrained方法
+            model, num_classes=model.num_classes, in_chans=kwargs.get('in_chans', 3), filter_fn=_conv_filter)
     return model
 
 # below is work in progress
