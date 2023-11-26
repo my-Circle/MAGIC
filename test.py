@@ -9,8 +9,6 @@ import torch.backends.cudnn as cudnn
 import torch.utils.data
 
 from dataset import hierarchical_dataset, AlignCollate
-# from Datasets import hierarchical_dataset, AlignCollate
-# from seqda_model import Model
 from utils import AttnLabelConverter, Averager, TokenLabelConverter
 from utils import load_char_dict, compute_loss
 
@@ -93,69 +91,54 @@ def validation(model, criterion, evaluation_loader, converter, opt):
         length_of_data = length_of_data + batch_size  #192
         image = image_tensors.to(device)
         # For max length prediction
-        target = converter.encode(labels)  # 用tokenizer解析labels,进入utils.py,target(bs,max_seq_len)=(192,27)
-        # length_for_pred = torch.IntTensor([opt.batch_max_length] * batch_size).to(device)  #长为192的tensor，每个元素是25
-        # text_for_pred = torch.LongTensor(batch_size, opt.batch_max_length + 1).fill_(0).to(device)  #192,26的全0tensor
-        #
-        # text_for_loss, length_for_loss = converter.encode(labels,  #长为192的list，每个元素是一个单词，它是一张图片的label
-        #                                                   batch_max_length=opt.batch_max_length)
+        target = converter.encode(labels)  #(192,27)
+
+
 
         start_time = time.time()
 
-        # preds, global_feature, local_feature, attention_weights, transformed_imgs, control_points = model(
-        #     image, text_for_pred, is_train=False)
         _, char_preds, bpe_preds, wp_preds = model(image, is_eval=True)
-            # image, text_for_pred, text_for_pred, text_for_pred, is_train=False)
+
 
         forward_time = time.time() - start_time
 
-        # preds = preds[:, :text_for_loss.shape[1] - 1, :] #去掉结束字符[S] 192,26,38
-        # target = text_for_loss[:, 1:]  # without [GO] Symbol 192,26
-        # cost = criterion(preds.contiguous().view(-1, preds.shape[-1]),
-        #                  target.contiguous().view(-1))
-        #
-        # # select max probabilty (greedy decoding) then decode index to character
-        # preds_score, preds_index = preds.max(2)  #192,26
-        # preds_str = converter.decode(preds_index, length_for_pred)
-        # labels = converter.decode(text_for_loss[:, 1:], length_for_loss)
 
-        # target = text_for_loss[:, 1:]
+
+
         cost = criterion(char_preds.contiguous().view(-1, char_preds.shape[-1]),
                          target.contiguous().view(-1))  # char_preds:192*26,38  target:192*26
-        # cost = char_criterion(char_preds, target, target) \
-        #        + criterion(bpe_preds.contiguous().view(-1, bpe_preds.shape[-1]), target.contiguous().view(-1)) \
-        #        + criterion(wp_preds.contiguous().view(-1, wp_preds.shape[-1]), target.contiguous().view(-1))# char_preds:192*26,38  target:192*26
+
 
         # char pred
         _, char_pred_index = char_preds.topk(1, dim=-1, largest=True, sorted=True)  # char_pred_index(192,27,1)
-        char_pred_index = char_pred_index.view(-1, converter.batch_max_length)  # (192,27) 每个元素代表索引，不是置信度
+        char_pred_index = char_pred_index.view(-1, converter.batch_max_length)  # (192,27)
         length_for_pred = torch.IntTensor([converter.batch_max_length - 1] * batch_size).to(
-            device)  # 长度为192的tensor，该tensor中每个元素都是27-1=26
+            device)
         char_preds_str = converter.char_decode(char_pred_index[:, 1:],
-                                               length_for_pred)  # 进入utils.py，返回长度为192的列表，每个元素是一个26个字符的字符串，表示预测结果
-        char_pred_prob = F.softmax(char_preds, dim=2)  # 192,27,38
-        char_pred_max_prob, _ = char_pred_prob.max(dim=2)  # (192,27) 每个元素代表置信度，不是索引
-        char_preds_max_prob = char_pred_max_prob[:, 1:]  # (192,26)
+                                               length_for_pred)
+        char_pred_prob = F.softmax(char_preds, dim=2)
+        char_pred_max_prob, _ = char_pred_prob.max(dim=2)
+        char_preds_max_prob = char_pred_max_prob[:, 1:]
 
         # bpe pred
-        _, bpe_preds_index = bpe_preds.topk(1, dim=-1, largest=True, sorted=True)  # 与上面char的情形完全相同(192,27,1)
-        bpe_preds_index = bpe_preds_index.view(-1, converter.batch_max_length)  # (192,27)每个元素代表索引，不是置信度
+        _, bpe_preds_index = bpe_preds.topk(1, dim=-1, largest=True, sorted=True)
+        bpe_preds_index = bpe_preds_index.view(-1, converter.batch_max_length)
         bpe_preds_str = converter.bpe_decode(bpe_preds_index[:, 1:],
-                                             length_for_pred)  # 进入utils.py，返回长度为192的列表，每个元素是利用bpe tokenizer解码后的预测结果
+                                             length_for_pred)
         bpe_preds_prob = F.softmax(bpe_preds, dim=2)  # 192,27,50257
-        bpe_preds_max_prob, _ = bpe_preds_prob.max(dim=2)  # (192,27) 每个元素代表置信度，不是索引
-        bpe_preds_max_prob = bpe_preds_max_prob[:, 1:]  # 192,26
-        bpe_preds_index = bpe_preds_index[:, 1:]  # 192,26
+        bpe_preds_max_prob, _ = bpe_preds_prob.max(dim=2)
+        bpe_preds_max_prob = bpe_preds_max_prob[:, 1:]
+        bpe_preds_index = bpe_preds_index[:, 1:]
 
         # wp pred
-        _, wp_preds_index = wp_preds.topk(1, dim=-1, largest=True, sorted=True)  # 与上面全相同 192,27,1
-        wp_preds_index = wp_preds_index.view(-1, converter.batch_max_length)  # (192,27)每个元素代表索引，不是置信度
+        _, wp_preds_index = wp_preds.topk(1, dim=-1, largest=True, sorted=True)
+        wp_preds_index = wp_preds_index.view(-1, converter.batch_max_length)
         wp_preds_str = converter.wp_decode(wp_preds_index[:, 1:],
-                                           length_for_pred)  # 进入utils.py，返回长度为192的列表，每个元素是利用wp tokenizer解码后的预测结果
+                                           length_for_pred)
         wp_preds_prob = F.softmax(wp_preds, dim=2)  # 192,27,30522
-        wp_preds_max_prob, _ = wp_preds_prob.max(dim=2)  # (192,27) 每个元素代表置信度，不是索引
-        wp_preds_max_prob = wp_preds_max_prob[:, 1:]  # 192,26
-        wp_preds_index = wp_preds_index[:, 1:]  # 192,26
+        wp_preds_max_prob, _ = wp_preds_prob.max(dim=2)
+        wp_preds_max_prob = wp_preds_max_prob[:, 1:]
+        wp_preds_index = wp_preds_index[:, 1:]
 
         infer_time += forward_time
         valid_loss_avg.add(cost)
@@ -163,80 +146,80 @@ def validation(model, criterion, evaluation_loader, converter, opt):
         preds_str = []
         gts = []
 
-        # calculate accuracy & confidence score  以下逻辑很重要，是融合的逻辑
+        # calculate accuracy & confidence score
         confidence_score_list = []
         for index, gt in enumerate(labels):
-            max_confidence_score = 0.0  #可以改成-1e-6 一个绝对值很小的负数
+            max_confidence_score = 0.0
             out_pred = None
 
             # preds_str = []
             # gts = []
 
             # char
-            char_pred = char_preds_str[index]  # 26个字符的字符串
-            char_pred_max_prob = char_preds_max_prob[index]  # [26,]
-            char_pred_EOS = char_pred.find('[s]')  # 出现结束符的位置
+            char_pred = char_preds_str[index]
+            char_pred_max_prob = char_preds_max_prob[index]
+            char_pred_EOS = char_pred.find('[s]')
             char_pred = char_pred[:char_pred_EOS]  # prune after "end of sentence" token ([s])
             if char_pred == gt:
                 char_n_correct += 1
             char_pred_max_prob = char_pred_max_prob[:char_pred_EOS + 1]
             try:
-                char_confidence_score = char_pred_max_prob.cumprod(dim=0)[-1]  # 按列累乘后取最后一个值，就是累乘结果
+                char_confidence_score = char_pred_max_prob.cumprod(dim=0)[-1]
             except:
                 char_confidence_score = 0.0
             if char_confidence_score > max_confidence_score:
                 max_confidence_score = char_confidence_score
                 out_pred = char_pred
 
-            # bpe 和char情况类似
+            # bpe
             bpe_pred = bpe_preds_str[index]
             bpe_pred_max_prob = bpe_preds_max_prob[index]
-            bpe_pred_EOS = bpe_pred.find('#')  # 结束符
+            bpe_pred_EOS = bpe_pred.find('#')
             bpe_pred = bpe_pred[:bpe_pred_EOS]
             if bpe_pred == gt:
                 bpe_n_correct += 1
-            bpe_pred_index = bpe_preds_index[index].cpu().tolist()  # 注意这是索引不是置信度
+            bpe_pred_index = bpe_preds_index[index].cpu().tolist()
             try:
-                bpe_pred_EOS_index = bpe_pred_index.index(2)  # 找结束符
+                bpe_pred_EOS_index = bpe_pred_index.index(2)
             except:
                 bpe_pred_EOS_index = -1
             bpe_pred_max_prob = bpe_pred_max_prob[:bpe_pred_EOS_index + 1]
             try:
-                bpe_confidence_score = bpe_pred_max_prob.cumprod(dim=0)[-1]  # 案列累乘后取最后一列的值，也就是累乘结果
+                bpe_confidence_score = bpe_pred_max_prob.cumprod(dim=0)[-1]
             except:
                 bpe_confidence_score = 0.0
             if bpe_confidence_score > max_confidence_score:
                 max_confidence_score = bpe_confidence_score
                 out_pred = bpe_pred
 
-            # wp 和bpe情况相似
+            # wp
             wp_pred = wp_preds_str[index]
             wp_pred_max_prob = wp_preds_max_prob[index]
-            wp_pred_EOS = wp_pred.find('[SEP]')  # 找结束符
+            wp_pred_EOS = wp_pred.find('[SEP]')
             wp_pred = wp_pred[:wp_pred_EOS]
             if wp_pred == gt:
                 wp_n_correct += 1
-            wp_pred_index = wp_preds_index[index].cpu().tolist()  # 索引，不是置信度
+            wp_pred_index = wp_preds_index[index].cpu().tolist()
             try:
-                wp_pred_EOS_index = wp_pred_index.index(102)  # 找结束符
+                wp_pred_EOS_index = wp_pred_index.index(102)
             except:
                 wp_pred_EOS_index = -1
             wp_pred_max_prob = wp_pred_max_prob[:wp_pred_EOS_index + 1]
             try:
-                wp_confidence_score = wp_pred_max_prob.cumprod(dim=0)[-1]  # 还是累乘
+                wp_confidence_score = wp_pred_max_prob.cumprod(dim=0)[-1]
             except:
                 wp_confidence_score = 0.0
             if wp_confidence_score > max_confidence_score:
                 max_confidence_score = wp_confidence_score
                 out_pred = wp_pred
 
-            if out_pred == None:  #当改变了max_confidence_score初始值时 这一句就不用了
+            if out_pred == None:
                 out_pred = char_pred
 
             if out_pred == gt:
                 out_n_correct += 1
 
-            preds_str.append(out_pred)  #融合后的预测输出
+            preds_str.append(out_pred)
             gts.append(gt)
 
             confidence_score_list.append(char_confidence_score)
@@ -246,13 +229,13 @@ def validation(model, criterion, evaluation_loader, converter, opt):
         n_correct += batch_n_correct
         norm_ED += batch_char_acc
 
-    accuracy = n_correct / float(length_of_data) * 100 #单词准确率 越大越好；HT中WER=1-accuracy；ST中acc=accuracy  #是融合后的预测精度
-    norm_ED = norm_ED / float(length_of_data) * 100 #字符级编辑距离损失 越大越好；HT中CER=1-norm_ED
+    accuracy = n_correct / float(length_of_data) * 100
+    norm_ED = norm_ED / float(length_of_data) * 100
 
     char_accuracy = char_n_correct / float(length_of_data) * 100
     bpe_accuracy = bpe_n_correct / float(length_of_data) * 100
     wp_accuracy = wp_n_correct / float(length_of_data) * 100
-    out_accuracy = out_n_correct / float(length_of_data) * 100  #应该等于accuracy，是融合后的精度
+    out_accuracy = out_n_correct / float(length_of_data) * 100
 
     return valid_loss_avg.val(), accuracy, norm_ED, char_accuracy, bpe_accuracy, wp_accuracy, out_accuracy, preds_str, gts, infer_time, length_of_data
 
@@ -261,9 +244,9 @@ def load(model, saved_model):
     params = torch.load(saved_model)
 
     if 'model' not in params: #baseline
-        model.load_state_dict(params) #,strict=False
+        model.load_state_dict(params)
     else:  #adapt
-        model.load_state_dict(params['model']) #,strict=False
+        model.load_state_dict(params['model'])
 
 
 def test(opt):
@@ -398,7 +381,7 @@ if __name__ == '__main__':
     if opt.sensitive:
         opt.character = string.printable[:-6]  # same with ASTER setting (use 94 char).
     if opt.char_dict is not None:
-        opt.character = load_char_dict(opt.char_dict)[3:-2]  # 去除Attention 和 CTC引入的一些特殊符号
+        opt.character = load_char_dict(opt.char_dict)[3:-2]  
     cudnn.benchmark = True
     cudnn.deterministic = True
     opt.num_gpu = torch.cuda.device_count()
