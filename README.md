@@ -1,94 +1,88 @@
-#  Adversarial Sequence-to-sequence Domain adaptation 
+#  MAGIC in Text Recognition: A Generalizable Recognition Model based on Unsupervised Domain Adaptation 
 
-## Overview
-We propose a novel Adversarial Sequence-to-sequence Domain Adaptation Network dubbed ASSDA for robust text image recognition, 
-which could adaptively transfer coarse global-level and  fine-grained character-level knowledge. 
-
+## Introduction
+The Code of Paper "MAGIC in Text Recognition: A Generalizable Recognition Model based on Unsupervised Domain Adaptation"
 
 
 
-### Install
 
-1.  This code is test in the environment with ```cuda==10.1, python==3.6.8```.
+### Environment & Install
 
-2. Install Requirements
+```cuda==11.6, python==3.7.16```
+
+Install Requirements
 
 ```
-pip3 install torch==1.2.0 pillow==6.2.1 torchvision==0.4.0 lmdb nltk natsort
+pip install torch==1.12.0 pillow==8.1.0 torchvision==0.13.0 lmdb==1.2.1 nltk==3.6.2 natsort==7.1.1 torchaudio==0.12.0
+pip install validators==0.20.0 timm==0.4.12 opencv-python==4.5.1.48 opencv-contrib-python==4.5.1.48 wand==0.6.7 transformers==4.2.1 strsimpy==0.2.1
 ```
 
 ### Dataset
 
-- The prepared synthetic and real scene dataset can be downloaded from [here](https://drive.google.com/drive/folders/192UfE9agQUMNq6AgU3_E05_FcPZK4hyt), which are created by  NAVER Corp. 
+- You can download lmdb dataset from [here(password:izsv)](https://pan.baidu.com/s/17i3ArCWhK4nBPe7de7fYHg). 
+  - Source Datasets: Synthetic Text
+    -  [MJSynth (MJ)](http://www.robots.ox.ac.uk/~vgg/data/text/)
+    -  [SynthText (ST)](http://www.robots.ox.ac.uk/~vgg/data/scenetext/)
+  - Target & Evaluation Datasets:
+    -  Real Scene Text
+       - The union of the training sets [IC13](http://rrc.cvc.uab.es/?ch=2), [IC15](http://rrc.cvc.uab.es/?ch=4), [IIIT](http://cvit.iiit.ac.in/projects/SceneTextUnderstanding/IIIT5K.html), and [SVT](http://www.iapr-tc11.org/mediawiki/index.php/The_Street_View_Text_Dataset).
+       - Benchmark evaluation scene text datasets : consist of [IIIT](http://cvit.iiit.ac.in/projects/SceneTextUnderstanding/IIIT5K.html), [SVT](http://www.iapr-tc11.org/mediawiki/index.php/The_Street_View_Text_Dataset), [IC03](http://www.iapr-tc11.org/mediawiki/index.php/ICDAR_2003_Robust_Reading_Competitions), [IC13](http://rrc.cvc.uab.es/?ch=2), [IC15](http://rrc.cvc.uab.es/?ch=4),
+        [SVTP](http://openaccess.thecvf.com/content_iccv_2013/papers/Phan_Recognizing_Text_with_2013_ICCV_paper.pdf), and [CUTE](http://cs-chan.com/downloads_CUTE80_dataset.html).
+    - Handwritten Text
+      - [IAM](http://www.fki.inf.unibe.ch/databases/iam-handwriting-database)
+    - Artistic Text
+      -  [WordArt](https://github.com/xdxie/WordArt)
+      -  Details of this dataset can be found in the paper [Toward Understanding WordArt: Corner-Guided Transformer for Scene Text Recognition](https://github.com/xdxie/WordArt)
+      -  Use tools/create_lmdb_dataset.py to convert images into LMDB dataset
 
-   - Synthetic scene text : [MJSynth (MJ)](http://www.robots.ox.ac.uk/~vgg/data/text/) and [SynthText (ST)](http://www.robots.ox.ac.uk/~vgg/data/scenetext/) \
-   - Real scene text : the union of the training sets [IC13](http://rrc.cvc.uab.es/?ch=2), [IC15](http://rrc.cvc.uab.es/?ch=4), [IIIT](http://cvit.iiit.ac.in/projects/SceneTextUnderstanding/IIIT5K.html), and [SVT](http://www.iapr-tc11.org/mediawiki/index.php/The_Street_View_Text_Dataset).\
-   - Benchmark evaluation scene text datasets : consist of [IIIT](http://cvit.iiit.ac.in/projects/SceneTextUnderstanding/IIIT5K.html), [SVT](http://www.iapr-tc11.org/mediawiki/index.php/The_Street_View_Text_Dataset), [IC03](http://www.iapr-tc11.org/mediawiki/index.php/ICDAR_2003_Robust_Reading_Competitions), [IC13](http://rrc.cvc.uab.es/?ch=2)[3], [IC15](http://rrc.cvc.uab.es/?ch=4),
-    [SVTP](http://openaccess.thecvf.com/content_iccv_2013/papers/Phan_Recognizing_Text_with_2013_ICCV_paper.pdf), and [CUTE](http://cs-chan.com/downloads_CUTE80_dataset.html).
-- The prepared handwritten text dataset can be downloaded from [here](https://www.dropbox.com/sh/4a9vrtnshozu929/AAAZucKLtEAUDuOufIRDVPOTa?dl=0)    
-    - Handwritten text: [IAM](http://www.fki.inf.unibe.ch/databases/iam-handwriting-database)
+<div style='display: none'> 
+- Synthetic scene text : [MJSynth (MJ)](http://www.robots.ox.ac.uk/~vgg/data/text/) and [SynthText (ST)](http://www.robots.ox.ac.uk/~vgg/data/scenetext/) \
+- Real scene text : the union of the training sets [IC13](http://rrc.cvc.uab.es/?ch=2), [IC15](http://rrc.cvc.uab.es/?ch=4), [IIIT](http://cvit.iiit.ac.in/projects/SceneTextUnderstanding/IIIT5K.html), and [SVT](http://www.iapr-tc11.org/mediawiki/index.php/The_Street_View_Text_Dataset).\
+- Benchmark evaluation scene text datasets : consist of [IIIT](http://cvit.iiit.ac.in/projects/SceneTextUnderstanding/IIIT5K.html), [SVT](http://www.iapr-tc11.org/mediawiki/index.php/The_Street_View_Text_Dataset), [IC03](http://www.iapr-tc11.org/mediawiki/index.php/ICDAR_2003_Robust_Reading_Competitions), [IC13](http://rrc.cvc.uab.es/?ch=2)[3], [IC15](http://rrc.cvc.uab.es/?ch=4),
+ [SVTP](http://openaccess.thecvf.com/content_iccv_2013/papers/Phan_Recognizing_Text_with_2013_ICCV_paper.pdf), and [CUTE](http://cs-chan.com/downloads_CUTE80_dataset.html).
+ - The prepared handwritten text dataset can be downloaded from [here](https://www.dropbox.com/sh/4a9vrtnshozu929/AAAZucKLtEAUDuOufIRDVPOTa?dl=0)    
+ - Handwritten text: [IAM](http://www.fki.inf.unibe.ch/databases/iam-handwriting-database)
+</div>
+
+### Pretrained Model
+You can download the pretrained models from [here(password:gsqt)](https://pan.baidu.com/s/1QQywykZbhwSVguNCmH61sQ) to the path 
+``` pretrain_m/ ```.
+
+### Training and Evaluation
 
 
-### Training and evaluation
-
-- For a toy example, you can download the pretrained model from [here](https://drive.google.com/drive/folders/15WPsuPJDCzhp2SvYZLRj8mAlT3zmoAMW)
-   
-    - Add  model files to test into `data/`
-
-- Training model
+- Training
     
-     ```
-    CUDA_VISIBLE_DEVICES=1 python train_da_global_local_selected.py --Transformation TPS --FeatureExtraction ResNet --SequenceModeling BiLSTM --Prediction Attn \
-     --src_train_data ./data/data_lmdb_release/training/ \
-    --tar_train_data ./data/IAM/test --tar_select_data IAM --tar_batch_ratio 1 --valid_data ../data/IAM/test/ \
-    --continue_model ./data/TPS-ResNet-BiLSTM-Attn.pth \
-    --batch_size 128 --lr 1 \
-    --experiment_name _adv_global_local_synth2iam_pc_0.1 --pc 0.1
     ```
+    CUDA_VISIBLE_DEVICES=1 python train_last.py --Transformer mgp-str --TransformerModel=mgp_str_base_patch4_3_32_128 \
+    --src_train_data ../../dataset/data_lmdb_release/training/ \
+    --tar_train_data ../../dataset/IAM --tar_select_data IAM --tar_batch_ratio 1 --valid_data ../../dataset/IAM \
+    --continue_model pretrain_m/base.pth \
+    --batch_size 64 --lr 0.1 --experiment_name _synth2iam_base \
+    --rgb --tar_lambda 0.1 
+    ```
+   - Please remember to change the parameter ```--tar_lambda``` when you change target training set.
+   - Parameters ```--Transformer --TransformerModel``` need to be changed when replacing the version.
     
-- Test model
+- Evaluation
 
-  - Test the baseline model
     ```
-    CUDA_VISIBLE_DEVICES=0 python test.py   --Transformation TPS --FeatureExtraction ResNet --SequenceModeling BiLSTM --Prediction Attn   \
-     --eval_data ./data/IAM/test \
-     --saved_model ./data/TPS-ResNet-BiLSTM-Attn.pth 
+    CUDA_VISIBLE_DEVICES=1 python test.py --Transformer mgp-str --TransformerModel=mgp_str_base_patch4_3_32_128 \
+    --eval_data ../../dataset/IAM --saved_model <path_to/best_accuracy.pth> \
+    --rgb --batch_size 64
     ```
-    
-  - Test the adaptation model
-  
-      ```
-    CUDA_VISIBLE_DEVICES=0 python test.py   --Transformation TPS --FeatureExtraction ResNet --SequenceModeling BiLSTM --Prediction Attn   \
-     --eval_data ./data/IAM/test \
-     --saved_model saved_models/TPS-ResNet-BiLSTM-Attn-Seed1111_adv_global_local_selected/best_accuracy.pth
-    ```
+
 
 
 ## Citation
 If you use this code for a paper please cite:
 
 ```
-@inproceedings{zhang2019sequence,
-  title={Sequence-to-sequence domain adaptation network for robust text image recognition},
-  author={Zhang, Yaping and Nie, Shuai and Liu, Wenju and Xu, Xing and Zhang, Dongxiang and Shen, Heng Tao},
-  booktitle={Proceedings of the IEEE/CVF Conference on Computer Vision and Pattern Recognition},
-  pages={2740--2749},
-  year={2019}
-}
 
-@article{zhang2021robust,
-  title={Robust Text Image Recognition via Adversarial Sequence-to-Sequence Domain Adaptation},
-  author={Zhang, Yaping and Nie, Shuai and Liang, Shan and Liu, Wenju},
-  journal={IEEE Transactions on Image Processing},
-  volume={30},
-  pages={3922--3933},
-  year={2021},
-  publisher={IEEE}
-}
 ```
 
 
 ##  Acknowledgement
 
-This implementation has been based on this repository [deep-text-recognition-benchmark](https://github.com/clovaai/deep-text-recognition-benchmark)
+This implementation is based on [MGP-STR](https://github.com/AlibabaResearch/AdvancedLiterateMachinery/tree/main/OCR/MGP-STR) and [Seq2SeqAdapt](https://github.com/AprilYapingZhang/Seq2SeqAdapt).
 
