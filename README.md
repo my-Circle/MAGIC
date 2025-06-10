@@ -1,7 +1,7 @@
-#  MAGIC in Text Recognition: A Generalizable Recognition Model based on Unsupervised Domain Adaptation 
+#  MAGIC: Multi-Granularity Domain Adaptation for Text Recognition 
 
 ## Introduction
-The Code of Paper "MAGIC in Text Recognition: A Generalizable Recognition Model based on Unsupervised Domain Adaptation"
+The Code of Paper "MAGIC: Multi-Granularity Domain Adaptation for Text Recognition"
 
 
 
@@ -35,14 +35,14 @@ pip install validators==0.20.0 timm==0.4.12 opencv-python==4.5.1.48 opencv-contr
       -  Details of this dataset can be found in the paper [Toward Understanding WordArt: Corner-Guided Transformer for Scene Text Recognition](https://github.com/xdxie/WordArt)
       -  Use tools/create_lmdb_dataset.py to convert images into LMDB dataset
 
-<div style='display: none'> 
+<!-- 
 - Synthetic scene text : [MJSynth (MJ)](http://www.robots.ox.ac.uk/~vgg/data/text/) and [SynthText (ST)](http://www.robots.ox.ac.uk/~vgg/data/scenetext/) \
 - Real scene text : the union of the training sets [IC13](http://rrc.cvc.uab.es/?ch=2), [IC15](http://rrc.cvc.uab.es/?ch=4), [IIIT](http://cvit.iiit.ac.in/projects/SceneTextUnderstanding/IIIT5K.html), and [SVT](http://www.iapr-tc11.org/mediawiki/index.php/The_Street_View_Text_Dataset).\
 - Benchmark evaluation scene text datasets : consist of [IIIT](http://cvit.iiit.ac.in/projects/SceneTextUnderstanding/IIIT5K.html), [SVT](http://www.iapr-tc11.org/mediawiki/index.php/The_Street_View_Text_Dataset), [IC03](http://www.iapr-tc11.org/mediawiki/index.php/ICDAR_2003_Robust_Reading_Competitions), [IC13](http://rrc.cvc.uab.es/?ch=2)[3], [IC15](http://rrc.cvc.uab.es/?ch=4),
  [SVTP](http://openaccess.thecvf.com/content_iccv_2013/papers/Phan_Recognizing_Text_with_2013_ICCV_paper.pdf), and [CUTE](http://cs-chan.com/downloads_CUTE80_dataset.html).
  - The prepared handwritten text dataset can be downloaded from [here](https://www.dropbox.com/sh/4a9vrtnshozu929/AAAZucKLtEAUDuOufIRDVPOTa?dl=0)    
  - Handwritten text: [IAM](http://www.fki.inf.unibe.ch/databases/iam-handwriting-database)
-</div>
+-->
 
 ### Pretrained Model
 You can download the pretrained models from [here(password:gsqt)](https://pan.baidu.com/s/1QQywykZbhwSVguNCmH61sQ) to the path 
@@ -78,7 +78,15 @@ You can download the pretrained models from [here(password:gsqt)](https://pan.ba
 If you use this code for a paper please cite:
 
 ```
-
+@article{zhang2025magic,
+  title={MAGIC: Multi-granularity domain adaptation for text recognition},
+  author={Zhang, Jia-Ying and Liu, Xiao-Qian and Xue, Zhi-Yuan and Luo, Xin and Xu, Xin-Shun},
+  journal={Pattern Recognition},
+  volume={161},
+  pages={111229},
+  year={2025},
+  publisher={Elsevier}
+}
 ```
 
 
